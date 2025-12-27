@@ -4,7 +4,7 @@
 
 namespace Vane.Parser
 
-/-- Control characters (C0 set) -/
+-- Control characters (C0 set)
 namespace C0
   def NUL : UInt8 := 0x00  -- Null
   def SOH : UInt8 := 0x01  -- Start of Heading
@@ -41,7 +41,7 @@ namespace C0
   def DEL : UInt8 := 0x7F  -- Delete
 end C0
 
-/-- C1 control characters (when received as ESC + byte) -/
+-- C1 control characters (when received as ESC + byte)
 namespace C1
   def IND : UInt8 := 0x44  -- 'D' - Index (move down one line)
   def NEL : UInt8 := 0x45  -- 'E' - Next Line

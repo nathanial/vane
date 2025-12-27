@@ -87,8 +87,12 @@ Vane is built on several components:
 - [x] Core types (Cell, Buffer, Style, Color)
 - [x] PTY FFI implementation (forkpty, read, write, resize, poll)
 - [x] PTY Lean bindings with shell spawn demo
-- [ ] ANSI/VT100 parser
-- [ ] Terminal state machine
+- [x] ANSI/VT100 parser
+  - [x] VT500-compatible state machine
+  - [x] CSI sequence dispatch (cursor, erase, scroll, modes)
+  - [x] SGR parsing (16-color, 256-color, 24-bit RGB)
+  - [x] OSC command parsing (window title, hyperlinks, clipboard)
+- [ ] Terminal state machine (apply parsed commands to buffer)
 - [ ] GPU rendering integration
 - [ ] Keyboard input handling
 - [ ] Scrollback navigation

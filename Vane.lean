@@ -13,6 +13,14 @@ import Vane.Core.Buffer
 import Vane.PTY.Types
 import Vane.PTY.FFI
 
+-- ANSI/VT100 Parser
+import Vane.Parser.Types
+import Vane.Parser.State
+import Vane.Parser.Machine
+import Vane.Parser.SGR
+import Vane.Parser.CSI
+import Vane.Parser.OSC
+
 namespace Vane
 
 -- Version information
