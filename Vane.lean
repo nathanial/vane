@@ -21,6 +21,15 @@ import Vane.Parser.SGR
 import Vane.Parser.CSI
 import Vane.Parser.OSC
 
+-- Terminal state machine
+import Vane.Terminal.Cursor
+import Vane.Terminal.Modes
+import Vane.Terminal.State
+import Vane.Terminal.Executor
+
+-- Input handling
+import Vane.Input.KeyEncoder
+
 namespace Vane
 
 -- Version information

@@ -71,12 +71,15 @@ def fillRect (buf : Buffer) (x y w h : Nat) (cell : Cell) : Buffer := Id.run do
 def clear (buf : Buffer) : Buffer :=
   buf.fill Cell.empty
 
-/-- Clear a single row -/
-def clearRow (buf : Buffer) (row : Nat) : Buffer :=
-  if row < buf.height then
-    buf.fillRect 0 row buf.width 1 Cell.empty
-  else
+/-- Clear a single row (optionally from col start to col end) -/
+def clearRow (buf : Buffer) (row : Nat) (startCol : Option Nat := none) (endCol : Option Nat := none) : Buffer :=
+  if row >= buf.height then
     buf
+  else
+    let start := startCol.getD 0
+    let finish := min (endCol.map (· + 1) |>.getD buf.width) buf.width
+    if start >= finish then buf
+    else buf.fillRect start row (finish - start) 1 Cell.empty
 
 /-- Clear from cursor to end of line -/
 def clearToEndOfLine (buf : Buffer) (col row : Nat) : Buffer :=
@@ -186,6 +189,84 @@ def deleteLines (buf : Buffer) (row : Nat) (n : Nat) : Buffer := Id.run do
   -- Clear bottom lines
   for r in [buf.height - n:buf.height] do
     result := result.clearRow r
+  result
+
+/-- Scroll up within a region (top and bottom are inclusive, 0-indexed) -/
+def scrollRegionUp (buf : Buffer) (top bottom : Nat) (n : Nat := 1) : Buffer := Id.run do
+  if top >= buf.height || bottom >= buf.height || top > bottom then return buf
+  let regionHeight := bottom - top + 1
+  if n >= regionHeight then
+    -- Clear entire region
+    let mut result := buf
+    for row in [top:bottom + 1] do
+      result := result.clearRow row
+    return result
+
+  let mut result := buf
+  -- Move lines up within region
+  for i in [0:regionHeight - n] do
+    let srcRow := top + n + i
+    let dstRow := top + i
+    if srcRow <= bottom then
+      result := result.setRow dstRow (buf.getRow srcRow)
+  -- Clear bottom n lines of region
+  for row in [bottom - n + 1:bottom + 1] do
+    result := result.clearRow row
+  result
+
+/-- Scroll down within a region (top and bottom are inclusive, 0-indexed) -/
+def scrollRegionDown (buf : Buffer) (top bottom : Nat) (n : Nat := 1) : Buffer := Id.run do
+  if top >= buf.height || bottom >= buf.height || top > bottom then return buf
+  let regionHeight := bottom - top + 1
+  if n >= regionHeight then
+    let mut result := buf
+    for row in [top:bottom + 1] do
+      result := result.clearRow row
+    return result
+
+  let mut result := buf
+  -- Move lines down within region (from bottom to avoid overwriting)
+  for i in [0:regionHeight - n] do
+    let srcRow := bottom - n - i
+    let dstRow := bottom - i
+    if srcRow >= top then
+      result := result.setRow dstRow (buf.getRow srcRow)
+  -- Clear top n lines of region
+  for row in [top:top + n] do
+    result := result.clearRow row
+  result
+
+/-- Insert n blank characters at position, shifting rest of line right -/
+def insertChars (buf : Buffer) (col row : Nat) (n : Nat) : Buffer := Id.run do
+  if row >= buf.height || col >= buf.width then return buf
+  let rowCells := buf.getRow row
+  let mut result := buf
+  -- Shift characters right (from end to avoid overwriting)
+  for i in [0:buf.width - col - n] do
+    let srcCol := buf.width - 1 - n - i
+    let dstCol := buf.width - 1 - i
+    if srcCol >= col && dstCol < buf.width then
+      result := result.set dstCol row (rowCells.getD srcCol Cell.empty)
+  -- Clear inserted positions
+  for c in [col:min (col + n) buf.width] do
+    result := result.set c row Cell.empty
+  result
+
+/-- Delete n characters at position, shifting rest of line left -/
+def deleteChars (buf : Buffer) (col row : Nat) (n : Nat) : Buffer := Id.run do
+  if row >= buf.height || col >= buf.width then return buf
+  let rowCells := buf.getRow row
+  let mut result := buf
+  -- Shift characters left
+  for dstCol in [col:buf.width - n] do
+    let srcCol := dstCol + n
+    if srcCol < buf.width then
+      result := result.set dstCol row (rowCells.getD srcCol Cell.empty)
+    else
+      result := result.set dstCol row Cell.empty
+  -- Clear rightmost n columns
+  for c in [buf.width - n:buf.width] do
+    result := result.set c row Cell.empty
   result
 
 end Buffer

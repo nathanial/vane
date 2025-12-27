@@ -92,10 +92,18 @@ Vane is built on several components:
   - [x] CSI sequence dispatch (cursor, erase, scroll, modes)
   - [x] SGR parsing (16-color, 256-color, 24-bit RGB)
   - [x] OSC command parsing (window title, hyperlinks, clipboard)
-- [ ] Terminal state machine (apply parsed commands to buffer)
+- [x] Terminal state machine
+  - [x] Cursor management (position, visibility, style, blink)
+  - [x] Terminal modes (DECAWM, origin mode, alt screen, etc.)
+  - [x] Complete terminal state with scrollback buffer
+  - [x] Command executor (apply parsed commands to buffer)
+- [x] Keyboard input encoding
+  - [x] Special keys (arrows, function keys, navigation)
+  - [x] Modifier handling (Ctrl, Alt, Shift, Cmd)
+  - [x] Mouse event encoding (X10, SGR, SGR-Pixels)
+  - [x] Bracketed paste support
 - [ ] GPU rendering integration
-- [ ] Keyboard input handling
-- [ ] Scrollback navigation
+- [ ] Scrollback navigation (view scrolling implemented)
 - [ ] Text selection
 
 ## License
