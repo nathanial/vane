@@ -30,6 +30,15 @@ import Vane.Terminal.Executor
 -- Input handling
 import Vane.Input.KeyEncoder
 
+-- Rendering
+import Vane.Render.Grid
+
+-- Application
+import Vane.App.Config
+import Vane.App.Input
+import Vane.App.State
+import Vane.App.Loop
+
 namespace Vane
 
 -- Version information
