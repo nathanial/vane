@@ -82,8 +82,8 @@ def keyCodeToChar (code : UInt16) (mods : Modifiers) : Option Char :=
   else if c == 7 then some (if mods.shift then 'X' else 'x')
   else if c == 16 then some (if mods.shift then 'Y' else 'y')
   else if c == 6 then some (if mods.shift then 'Z' else 'z')
-  -- Number keys (top row)
-  else if c == 29 then some (if mods.shift then '!' else '1')
+  -- Number keys (top row) - macOS virtual key codes
+  else if c == 18 then some (if mods.shift then '!' else '1')
   else if c == 19 then some (if mods.shift then '@' else '2')
   else if c == 20 then some (if mods.shift then '#' else '3')
   else if c == 21 then some (if mods.shift then '$' else '4')
@@ -92,7 +92,7 @@ def keyCodeToChar (code : UInt16) (mods : Modifiers) : Option Char :=
   else if c == 26 then some (if mods.shift then '&' else '7')
   else if c == 28 then some (if mods.shift then '*' else '8')
   else if c == 25 then some (if mods.shift then '(' else '9')
-  else if c == 18 then some (if mods.shift then ')' else '0')
+  else if c == 29 then some (if mods.shift then ')' else '0')
   -- Punctuation
   else if c == 27 then some (if mods.shift then '_' else '-')
   else if c == 24 then some (if mods.shift then '+' else '=')

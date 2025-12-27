@@ -4,6 +4,7 @@
 
 import Crucible
 import Vane
+import VaneTests.InputTests
 
 open Crucible
 open Vane
