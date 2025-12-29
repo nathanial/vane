@@ -5,8 +5,8 @@ open System (FilePath)
 package vane where
   version := v!"0.1.0"
 
-require afferent from ".." / "afferent"
-require crucible from ".." / "crucible"
+require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.1"
+require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.1"
 
 -- Common link arguments (inherit from afferent for Metal/Cocoa)
 def commonLinkArgs : Array String := #[
