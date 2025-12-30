@@ -6,3 +6,5 @@
 *.o
 *.a
 .DS_Store
+.lake
+lake-manifest.json
