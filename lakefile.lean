@@ -5,7 +5,7 @@ open System (FilePath)
 package vane where
   version := v!"0.1.0"
 
-require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.5"
+require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.6"
 require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.3"
 
 -- Common link arguments (inherit from afferent for Metal/Cocoa)
