@@ -121,18 +121,18 @@ def updateBlink (state : AppState) (now : Nat) : AppState :=
   else
     state
 
-/-- Process bytes from PTY and update terminal state -/
-def processOutput (state : AppState) (bytes : ByteArray) : AppState :=
-  if bytes.isEmpty then state
+/-- Process bytes from PTY and update terminal state, returning any responses to send back -/
+def processOutput (state : AppState) (bytes : ByteArray) : AppState × Array Terminal.Response :=
+  if bytes.isEmpty then (state, #[])
   else
     -- Parse bytes to actions
     let (parser, actions) := state.parser.process bytes
     -- Execute actions on terminal
     let result := state.terminal.executeActions actions
-    { state with
+    ({ state with
       parser
       terminal := result.state
-    }
+    }, result.responses)
 
 /-- Handle window resize -/
 def handleResize (state : AppState) (newWidth newHeight : Float) : IO AppState := do

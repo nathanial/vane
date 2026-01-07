@@ -24,7 +24,11 @@ def pollAndProcessPty (state : AppState) : IO AppState := do
   let hasData ← state.pty.poll 0
   if hasData then
     let bytes ← state.pty.read 65536
-    pure (state.processOutput bytes)
+    let (newState, responses) := state.processOutput bytes
+    -- Send any responses (like cursor position reports) back to the PTY
+    for response in responses do
+      state.pty.write response.toBytes
+    pure newState
   else
     pure state
 

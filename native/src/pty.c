@@ -92,6 +92,8 @@ LEAN_EXPORT lean_obj_res vane_pty_open(
         /* Set up environment */
         setenv("TERM", "xterm-256color", 1);
         setenv("COLORTERM", "truecolor", 1);
+        /* Disable zsh's partial line indicator (%) - we'll handle this properly later */
+        setenv("PROMPT_EOL_MARK", "", 1);
 
         /* Execute shell */
         execlp(shell_path, shell_path, "-l", NULL);
