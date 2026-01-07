@@ -49,7 +49,20 @@ target pty_o pkg : FilePath := do
     "-O2"
   ] #[] "cc"
 
+-- Clipboard FFI (Objective-C)
+target clipboard_o pkg : FilePath := do
+  let oFile := pkg.buildDir / "native" / "clipboard.o"
+  let srcFile := pkg.dir / "native" / "src" / "clipboard.m"
+  let leanIncludeDir ← getLeanIncludeDir
+  buildO oFile (← inputTextFile srcFile) #[
+    "-I", leanIncludeDir.toString,
+    "-fPIC",
+    "-O2",
+    "-fobjc-arc"
+  ] #[] "clang"
+
 extern_lib libvane_native pkg := do
   let name := nameToStaticLib "vane_native"
   let ptyO ← pty_o.fetch
-  buildStaticLib (pkg.staticLibDir / name) #[ptyO]
+  let clipboardO ← clipboard_o.fetch
+  buildStaticLib (pkg.staticLibDir / name) #[ptyO, clipboardO]

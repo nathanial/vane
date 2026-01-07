@@ -8,6 +8,7 @@ import Vane.Terminal.Executor
 import Vane.Parser.Machine
 import Vane.PTY.FFI
 import Vane.App.Config
+import Vane.App.Selection
 import Vane.Render.Grid
 
 namespace Vane.App
@@ -45,6 +46,18 @@ structure AppState where
   termCols : Nat
   /-- Terminal height in rows -/
   termRows : Nat
+  /-- Current text selection (if any) -/
+  selection : Option SelectionRange := none
+  /-- Whether mouse button is currently pressed -/
+  mouseDown : Bool := false
+  /-- Click count for multi-click detection (1=single, 2=double, 3=triple) -/
+  clickCount : Nat := 0
+  /-- Timestamp of last click for multi-click detection -/
+  lastClickTime : Nat := 0
+  /-- Column of last click for multi-click detection -/
+  lastClickCol : Nat := 0
+  /-- Row of last click for multi-click detection -/
+  lastClickRow : Nat := 0
 
 namespace AppState
 
@@ -160,6 +173,42 @@ def handleResize (state : AppState) (newWidth newHeight : Float) : IO AppState :
 /-- Clear dirty flags after rendering -/
 def clearDirty (state : AppState) : AppState :=
   { state with terminal := state.terminal.clearDirty }
+
+/-- Clear selection -/
+def clearSelection (state : AppState) : AppState :=
+  { state with selection := none }
+
+/-- Convert pixel coordinates to cell coordinates -/
+def pixelToCell (state : AppState) (px py : Float) : Nat × Nat :=
+  let col := ((px - state.config.paddingX) / state.cellWidth).toUInt32.toNat
+  let row := ((py - state.config.paddingY) / state.cellHeight).toUInt32.toNat
+  -- Clamp to valid range
+  let col := min col (state.termCols - 1)
+  let row := min row (state.termRows - 1)
+  (col, row)
+
+/-- Extract selected text as a string -/
+def getSelectedText (state : AppState) : String :=
+  match state.selection with
+  | none => ""
+  | some sel =>
+    let sel := sel.normalize
+    let buffer := state.terminal.currentBuffer
+    Id.run do
+      let mut result := ""
+      for row in [sel.startRow : sel.endRow + 1] do
+        let startCol := if row == sel.startRow then sel.startCol else 0
+        let endCol := if row == sel.endRow then sel.endCol else state.termCols
+        -- Get characters for this row
+        for col in [startCol : endCol] do
+          let cell := buffer.get col row
+          if cell.char != '\x00' then
+            result := result.push cell.char
+        -- Add newline between rows (not after last)
+        if row < sel.endRow then
+          result := result.push '\n'
+      -- Trim trailing spaces from each line
+      result
 
 end AppState
 
