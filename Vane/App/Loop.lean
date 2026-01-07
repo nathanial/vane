@@ -64,7 +64,10 @@ def init (config : Config) : IO (Canvas × AppState) := do
   -- Initialize afferent
   Afferent.FFI.init
 
-  -- Estimate window size from config
+  -- Get screen scale factor for HiDPI displays
+  let screenScale ← FFI.getScreenScale
+
+  -- Estimate window size from config (in logical pixels)
   -- Approximate cell dimensions for Menlo 14pt: charWidth ~8.4, cellHeight ~17
   -- These are conservative estimates; actual rendering will use font metrics
   let estimatedCellWidth : Float := config.fontSize.toFloat * 0.6
@@ -73,19 +76,19 @@ def init (config : Config) : IO (Canvas × AppState) := do
   let windowWidth := config.paddingX * 2 + estimatedCellWidth * config.initialCols.toFloat
   let windowHeight := config.paddingY * 2 + estimatedCellHeight * config.initialRows.toFloat
 
-  -- Create the single canvas at estimated size
-  let canvas ← Canvas.create windowWidth.toUInt32 windowHeight.toUInt32 config.windowTitle
+  -- Create canvas with screen scale (window in physical pixels, we'll scale down for logical)
+  let physicalWidth := (windowWidth * screenScale).toUInt32
+  let physicalHeight := (windowHeight * screenScale).toUInt32
+  let canvas ← Canvas.createWithScale physicalWidth physicalHeight config.windowTitle screenScale
 
-  -- Now load font and measure actual cell dimensions
-  let font ← Font.load config.fontPath config.fontSize
-  let (charWidth, _) ← font.measureText "M"
-  let cellHeight := font.lineHeight
+  -- Load font with scaled size for crisp rendering on HiDPI
+  let font ← Font.loadScaled config.fontPath config.fontSize.toFloat screenScale
 
   -- Open PTY with shell
   let pty ← PTY.open config.shell config.initialCols.toUInt16 config.initialRows.toUInt16
 
-  -- Create application state with actual cell dimensions
-  let state ← AppState.create config canvas font pty
+  -- Create application state with actual cell dimensions (pass screenScale for metric conversion)
+  let state ← AppState.create config canvas font pty screenScale
 
   pure (canvas, state)
 
@@ -121,7 +124,7 @@ def run (config : Config) : IO Unit := do
     -- Begin frame
     let ok ← c.beginFrame bgColor
     if ok then
-      -- Render terminal
+      -- Render terminal (all coordinates in physical pixels for HiDPI)
       c ← renderFrame c s
 
       -- Clear dirty flags

@@ -69,23 +69,30 @@ def calculateDimensions (windowWidth windowHeight cellWidth cellHeight paddingX 
   (max 1 cols, max 1 rows)
 
 /-- Create initial application state -/
-def create (config : Config) (canvas : Canvas) (font : Font) (pty : PTY) : IO AppState := do
-  -- Measure cell dimensions
+def create (config : Config) (canvas : Canvas) (font : Font) (pty : PTY) (screenScale : Float := 1.0) : IO AppState := do
+  -- Measure cell dimensions (all in physical pixels for consistent rendering)
   let (charWidth, _) ← font.measureText "M"
   let cellHeight := font.lineHeight
 
-  -- Get window size
+  -- Get window size (in physical pixels)
   let (windowWidth, windowHeight) := (canvas.ctx.baseWidth, canvas.ctx.baseHeight)
 
-  -- Calculate terminal dimensions
+  -- Scale padding to physical pixels
+  let physicalPaddingX := config.paddingX * screenScale
+  let physicalPaddingY := config.paddingY * screenScale
+
+  -- Calculate terminal dimensions using physical padding
   let (termCols, termRows) := calculateDimensions
-    windowWidth windowHeight charWidth cellHeight config.paddingX config.paddingY
+    windowWidth windowHeight charWidth cellHeight physicalPaddingX physicalPaddingY
 
   -- Create terminal state
   let terminal := TerminalState.create termCols termRows config.maxScrollback
 
   -- Get initial time
   let now ← IO.monoMsNow
+
+  -- Store config with physical pixel padding for rendering
+  let scaledConfig := { config with paddingX := physicalPaddingX, paddingY := physicalPaddingY }
 
   pure {
     terminal
@@ -94,7 +101,7 @@ def create (config : Config) (canvas : Canvas) (font : Font) (pty : PTY) : IO Ap
     font
     cellWidth := charWidth
     cellHeight := cellHeight
-    config
+    config := scaledConfig
     lastBlinkTime := now
     cursorVisible := true
     windowWidth
