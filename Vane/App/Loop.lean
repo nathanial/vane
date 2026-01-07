@@ -19,7 +19,7 @@ open Vane.Input
 open Vane.Render
 
 /-- Poll PTY for output and process it -/
-def pollAndProcessPty (state : AppState) : IO AppState := do
+def pollAndProcessPty (state : AppState) (debug : Bool := false) : IO AppState := do
   -- Poll with 0 timeout (non-blocking)
   let hasData ← state.pty.poll 0
   if hasData then
@@ -27,7 +27,10 @@ def pollAndProcessPty (state : AppState) : IO AppState := do
     let (newState, responses) := state.processOutput bytes
     -- Send any responses (like cursor position reports) back to the PTY
     for response in responses do
-      state.pty.write response.toBytes
+      let respBytes := response.toBytes
+      if debug && !respBytes.isEmpty then
+        IO.eprintln s!"[DEBUG] Sending response: {respBytes.size} bytes"
+      state.pty.write respBytes
     pure newState
   else
     pure state
@@ -118,8 +121,8 @@ def run (config : Config) : IO Unit := do
     -- Poll and process PTY output
     s ← pollAndProcessPty s
 
-    -- Handle keyboard input (set debug=true to see key codes)
-    s ← handleKeyboard s c (debug := true)
+    -- Handle keyboard input
+    s ← handleKeyboard s c
 
     -- Update cursor blink
     let now ← IO.monoMsNow

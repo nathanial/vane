@@ -83,7 +83,34 @@ LEAN_EXPORT lean_obj_res vane_pty_open(
     ws.ws_col = cols;
     ws.ws_row = rows;
 
-    pty->child_pid = forkpty(&pty->master_fd, NULL, NULL, &ws);
+    /* Set up proper terminal attributes */
+    struct termios term;
+    memset(&term, 0, sizeof(term));
+    /* Input modes */
+    term.c_iflag = ICRNL | IXON | IXANY | IMAXBEL | IUTF8;
+    /* Output modes - ONLCR maps NL to CR-NL */
+    term.c_oflag = OPOST | ONLCR;
+    /* Control modes */
+    term.c_cflag = CREAD | CS8 | HUPCL;
+    /* Local modes */
+    term.c_lflag = ICANON | ISIG | IEXTEN | ECHO | ECHOE | ECHOK | ECHOKE | ECHOCTL;
+    /* Control characters */
+    term.c_cc[VEOF] = 4;      /* Ctrl-D */
+    term.c_cc[VEOL] = 255;
+    term.c_cc[VERASE] = 127;  /* DEL */
+    term.c_cc[VINTR] = 3;     /* Ctrl-C */
+    term.c_cc[VKILL] = 21;    /* Ctrl-U */
+    term.c_cc[VMIN] = 1;
+    term.c_cc[VQUIT] = 28;    /* Ctrl-\ */
+    term.c_cc[VSTART] = 17;   /* Ctrl-Q */
+    term.c_cc[VSTOP] = 19;    /* Ctrl-S */
+    term.c_cc[VSUSP] = 26;    /* Ctrl-Z */
+    term.c_cc[VTIME] = 0;
+    /* Set baud rate */
+    cfsetispeed(&term, B38400);
+    cfsetospeed(&term, B38400);
+
+    pty->child_pid = forkpty(&pty->master_fd, NULL, &term, &ws);
 
     if (pty->child_pid == 0) {
         /* Child process - exec shell */
@@ -92,7 +119,8 @@ LEAN_EXPORT lean_obj_res vane_pty_open(
         /* Set up environment */
         setenv("TERM", "xterm-256color", 1);
         setenv("COLORTERM", "truecolor", 1);
-        /* Disable zsh's partial line indicator (%) - we'll handle this properly later */
+        /* Disable zsh's partial line indicator - it always shows because zsh can't
+           reliably detect cursor position after child processes run */
         setenv("PROMPT_EOL_MARK", "", 1);
 
         /* Execute shell */

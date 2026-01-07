@@ -15,8 +15,8 @@ structure Modes where
   keyboardLocked : Bool := false
   /-- Send/receive mode (SRM) - local echo -/
   localEcho : Bool := false
-  /-- Line feed/new line mode (LNM) -/
-  newLineMode : Bool := false
+  /-- Line feed/new line mode (LNM) - when true, LF also does CR -/
+  newLineMode : Bool := true
 
   -- DEC private modes
   /-- Application cursor keys (DECCKM) -/

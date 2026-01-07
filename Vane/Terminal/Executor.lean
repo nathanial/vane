@@ -52,9 +52,15 @@ def executeC0 (ts : TerminalState) (byte : UInt8) : TerminalState :=
   | 0x07 => ts  -- BEL: ring bell (handled by frontend)
   | 0x08 => ts.backspace  -- BS
   | 0x09 => ts.tab  -- HT
-  | 0x0A => ts.lineFeed  -- LF
-  | 0x0B => ts.lineFeed  -- VT (same as LF)
-  | 0x0C => ts.lineFeed  -- FF (same as LF)
+  | 0x0A => -- LF (respects newLineMode)
+    let ts := ts.lineFeed
+    if ts.modes.newLineMode then ts.carriageReturn else ts
+  | 0x0B => -- VT (same as LF)
+    let ts := ts.lineFeed
+    if ts.modes.newLineMode then ts.carriageReturn else ts
+  | 0x0C => -- FF (same as LF)
+    let ts := ts.lineFeed
+    if ts.modes.newLineMode then ts.carriageReturn else ts
   | 0x0D => ts.carriageReturn  -- CR
   | 0x0E => ts  -- SO: shift out (character set, ignored)
   | 0x0F => ts  -- SI: shift in (character set, ignored)
