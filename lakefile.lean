@@ -6,7 +6,7 @@ package vane where
   version := v!"0.1.0"
 
 require afferent from git "https://github.com/nathanial/afferent" @ "v0.0.6"
-require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.3"
+require crucible from git "https://github.com/nathanial/crucible" @ "v0.0.7"
 
 -- Common link arguments (inherit from afferent for Metal/Cocoa)
 def commonLinkArgs : Array String := #[
