@@ -129,20 +129,26 @@ def toRow (c : Cursor) (row : Nat) (height : Nat) : Cursor :=
     wrapPending := false
   }
 
-/-- Advance cursor by one position (for character output) -/
-def advance (c : Cursor) (width height : Nat) (autoWrap : Bool) : Cursor :=
-  if c.wrapPending then
+/-- Advance cursor by a number of columns (for character output) -/
+def advanceBy (c : Cursor) (width height : Nat) (autoWrap : Bool) (step : Nat) : Cursor :=
+  if step == 0 then
+    c
+  else if c.wrapPending then
     -- Pending wrap - move to next line
     if autoWrap then
       { c with col := 0, row := min (c.row + 1) (height - 1), wrapPending := false }
     else
       { c with wrapPending := false }
-  else if c.col + 1 >= width then
-    -- At last column - set pending wrap
-    { c with wrapPending := true }
+  else if c.col + step >= width then
+    -- At or past last column - set pending wrap
+    { c with col := min (c.col + step - 1) (width - 1), wrapPending := true }
   else
     -- Normal advance
-    { c with col := c.col + 1 }
+    { c with col := c.col + step }
+
+/-- Advance cursor by one position (for character output) -/
+def advance (c : Cursor) (width height : Nat) (autoWrap : Bool) : Cursor :=
+  c.advanceBy width height autoWrap 1
 
 /-- Make cursor visible -/
 def setVisible (c : Cursor) : Cursor :=

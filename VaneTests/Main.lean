@@ -100,6 +100,26 @@ test "Buffer.writeString writes text" := do
           (buf'.get 1 0).char == 'e' &&
           (buf'.get 4 0).char == 'o') "writeString should write characters"
 
+test "Buffer.writeString handles combining marks" := do
+  let buf := Buffer.create 5 1
+  let buf' := buf.writeString 0 0 "e\u0301"
+  let cell := buf'.get 0 0
+  let next := buf'.get 1 0
+  ensure (cell.char == 'e') "base character should be stored"
+  ensure (cell.combining.size == 1) "combining mark should be stored"
+  ensure (cell.text == "e\u0301") "cell.text should include combining mark"
+  ensure (next.char == ' ' && next.combining.isEmpty) "next cell should be empty"
+
+test "Buffer.writeString handles wide characters" := do
+  let buf := Buffer.create 4 1
+  let buf' := buf.writeString 0 0 "\u4E2DA"
+  let lead := buf'.get 0 0
+  let cont := buf'.get 1 0
+  let after := buf'.get 2 0
+  ensure (lead.char == '\u4E2D' && lead.width == 2) "lead cell should store wide char"
+  ensure (cont.char == '\x00' && cont.width == 0) "continuation cell should be placeholder"
+  ensure (after.char == 'A') "character after wide char should advance by 2"
+
 test "Buffer.clear resets all cells" := do
   let buf := Buffer.create 10 10
   let buf' := buf.set 5 5 (Cell.new 'X')

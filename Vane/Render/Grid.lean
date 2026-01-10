@@ -108,7 +108,9 @@ def buildSelectionBatch (params : RenderParams) (selection : SelectionRange)
 def renderCellForeground (canvas : Canvas) (params : RenderParams)
     (col row : Nat) (cell : Cell) : IO Canvas := do
   -- Skip empty or space characters
-  if cell.char == ' ' || cell.char == '\x00' then
+  if cell.width == 0 then
+    pure canvas
+  else if cell.char == ' ' && cell.combining.isEmpty then
     pure canvas
   else
     let fgColor := if cell.modifier.reverse then
@@ -121,7 +123,11 @@ def renderCellForeground (canvas : Canvas) (params : RenderParams)
     let pos := cellPosition params col row
     -- Offset text slightly from top-left of cell
     let textPos := ⟨pos.x, pos.y + params.font.ascender⟩
-    canvas.fillTextColor (cell.char.toString) textPos params.font fgColor
+    let text := cell.text
+    if text.isEmpty then
+      pure canvas
+    else
+      canvas.fillTextColor text textPos params.font fgColor
 
 /-! ## Cursor Rendering -/
 

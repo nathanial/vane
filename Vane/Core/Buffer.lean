@@ -46,12 +46,60 @@ def set (buf : Buffer) (col row : Nat) (cell : Cell) : Buffer :=
   else
     buf
 
+/-- Clear any wide character that overlaps the given position. -/
+def clearWideAt (buf : Buffer) (col row : Nat) : Buffer := Id.run do
+  if !buf.inBounds col row then return buf
+  if col > 0 then
+    let prev := buf.get (col - 1) row
+    if prev.width == 2 then
+      let buf := buf.set (col - 1) row Cell.empty
+      return buf.set col row Cell.empty
+  let cell := buf.get col row
+  if cell.width == 2 then
+    let buf := buf.set col row Cell.empty
+    if col + 1 < buf.width then
+      return buf.set (col + 1) row Cell.empty
+    else
+      return buf
+  else if cell.width == 0 then
+    return buf.set col row Cell.empty
+  else
+    return buf
+
+/-- Append a combining mark to the cell at position (adjusting for placeholders). -/
+def appendCombiningAt (buf : Buffer) (col row : Nat) (c : Char) : Buffer := Id.run do
+  if !buf.inBounds col row then return buf
+  let target := if col > 0 && (buf.get col row).width == 0 then col - 1 else col
+  if !buf.inBounds target row then return buf
+  let cell := buf.get target row
+  return buf.set target row (cell.appendCombining c)
+
+/-- Set a styled character at position, handling wide characters. -/
+def setStyledChar (buf : Buffer) (col row : Nat) (c : Char) (style : Style := {}) : Buffer := Id.run do
+  if !buf.inBounds col row then return buf
+  let width := Cell.charWidth c
+  if width == 0 then return buf
+  if width == 2 && col + 1 >= buf.width then return buf
+  let cell := Cell.styled c style.fg style.bg style.modifier
+  let mut result := buf.clearWideAt col row
+  if width == 2 then
+    result := result.clearWideAt (col + 1) row
+    result := result.set col row cell
+    result := result.set (col + 1) row (Cell.continuation cell)
+    return result
+  else
+    return result.set col row cell
+
 /-- Set character at position, preserving style -/
 def setChar (buf : Buffer) (col row : Nat) (c : Char) : Buffer :=
   if buf.inBounds col row then
-    let idx := buf.index col row
-    let cell := buf.cells.getD idx Cell.empty
-    { buf with cells := buf.cells.set! idx { cell with char := c } }
+    let cell := buf.get col row
+    let style := cell.toStyle
+    let width := Cell.charWidth c
+    if width == 0 then
+      if col > 0 then buf.appendCombiningAt (col - 1) row c else buf
+    else
+      buf.setStyledChar col row c style
   else
     buf
 
@@ -72,37 +120,46 @@ def clear (buf : Buffer) : Buffer :=
   buf.fill Cell.empty
 
 /-- Clear a single row (optionally from col start to col end) -/
-def clearRow (buf : Buffer) (row : Nat) (startCol : Option Nat := none) (endCol : Option Nat := none) : Buffer :=
+def clearRow (buf : Buffer) (row : Nat) (startCol : Option Nat := none) (endCol : Option Nat := none) : Buffer := Id.run do
   if row >= buf.height then
-    buf
-  else
-    let start := startCol.getD 0
-    let finish := min (endCol.map (· + 1) |>.getD buf.width) buf.width
-    if start >= finish then buf
-    else buf.fillRect start row (finish - start) 1 Cell.empty
+    return buf
+  let mut start := startCol.getD 0
+  let mut finish := min (endCol.map (· + 1) |>.getD buf.width) buf.width
+  if start > 0 && start < buf.width then
+    let cell := buf.get start row
+    if cell.width == 0 then
+      start := start - 1
+  if finish > 0 && finish < buf.width then
+    let endIdx := finish - 1
+    let cell := buf.get endIdx row
+    if cell.width == 2 && endIdx + 1 < buf.width then
+      finish := endIdx + 2
+  if start >= finish then
+    return buf
+  return buf.fillRect start row (finish - start) 1 Cell.empty
 
 /-- Clear from cursor to end of line -/
 def clearToEndOfLine (buf : Buffer) (col row : Nat) : Buffer :=
-  if row < buf.height && col < buf.width then
-    buf.fillRect col row (buf.width - col) 1 Cell.empty
-  else
-    buf
+  buf.clearRow row (some col) none
 
 /-- Clear from start of line to cursor -/
 def clearFromStartOfLine (buf : Buffer) (col row : Nat) : Buffer :=
-  if row < buf.height then
-    buf.fillRect 0 row (min (col + 1) buf.width) 1 Cell.empty
-  else
-    buf
+  buf.clearRow row none (some col)
 
 /-- Write a string starting at position -/
 def writeString (buf : Buffer) (col row : Nat) (s : String) (style : Style := {}) : Buffer := Id.run do
   let mut result := buf
   let mut c := col
   for char in s.toList do
+    let width := Cell.charWidth char
+    if width == 0 then
+      if c > 0 then
+        result := result.appendCombiningAt (c - 1) row char
+      continue
     if c >= buf.width then break
-    result := result.set c row (Cell.styled char style.fg style.bg style.modifier)
-    c := c + 1
+    if width == 2 && c + 1 >= buf.width then break
+    result := result.setStyledChar c row char style
+    c := c + width
   result
 
 /-- Scroll the buffer up by n lines, filling bottom with empty cells -/
@@ -239,8 +296,8 @@ def scrollRegionDown (buf : Buffer) (top bottom : Nat) (n : Nat := 1) : Buffer :
 /-- Insert n blank characters at position, shifting rest of line right -/
 def insertChars (buf : Buffer) (col row : Nat) (n : Nat) : Buffer := Id.run do
   if row >= buf.height || col >= buf.width then return buf
-  let rowCells := buf.getRow row
-  let mut result := buf
+  let mut result := buf.clearWideAt col row
+  let rowCells := result.getRow row
   -- Shift characters right (from end to avoid overwriting)
   for i in [0:buf.width - col - n] do
     let srcCol := buf.width - 1 - n - i
@@ -255,8 +312,10 @@ def insertChars (buf : Buffer) (col row : Nat) (n : Nat) : Buffer := Id.run do
 /-- Delete n characters at position, shifting rest of line left -/
 def deleteChars (buf : Buffer) (col row : Nat) (n : Nat) : Buffer := Id.run do
   if row >= buf.height || col >= buf.width then return buf
-  let rowCells := buf.getRow row
   let mut result := buf
+  for c in [col:min (col + n) buf.width] do
+    result := result.clearWideAt c row
+  let rowCells := result.getRow row
   -- Shift characters left
   for dstCol in [col:buf.width - n] do
     let srcCol := dstCol + n

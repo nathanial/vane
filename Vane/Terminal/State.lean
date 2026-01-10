@@ -171,22 +171,57 @@ def reverseTab (ts : TerminalState) : TerminalState :=
   { ts with cursor := ts.cursor.toColumn prevCol ts.width }
 
 /-- Write a character at current cursor position -/
-def writeChar (ts : TerminalState) (c : Char) : TerminalState :=
-  let ts := if ts.cursor.wrapPending && ts.modes.autoWrap then
-    -- Handle pending wrap
+def writeChar (ts : TerminalState) (c : Char) : TerminalState := Id.run do
+  let width := Cell.charWidth c
+  if width == 0 then
+    let targetCol :=
+      if ts.cursor.wrapPending then
+        some ts.cursor.col
+      else if ts.cursor.col == 0 then
+        none
+      else
+        some (ts.cursor.col - 1)
+    match targetCol with
+    | none => return ts
+    | some col =>
+      let buf := ts.currentBuffer.appendCombiningAt col ts.cursor.row c
+      let ts := ts.withCurrentBuffer fun _ => buf
+      return ts.markRowDirty ts.cursor.row
+
+  let mut ts := if ts.cursor.wrapPending && ts.modes.autoWrap then
     let ts := ts.lineFeed
     { ts with cursor := ts.cursor.toLineStart }
   else
     { ts with cursor := { ts.cursor with wrapPending := false } }
 
+  if width == 2 && ts.cursor.col + 1 >= ts.width then
+    if ts.modes.autoWrap then
+      let ts' := ts.lineFeed
+      let ts' := { ts' with cursor := ts'.cursor.toLineStart }
+      if ts'.cursor.col + 1 >= ts'.width then
+        return ts'
+      else
+        ts := ts'
+    else
+      return ts
+
   let cell := Cell.styled c ts.currentStyle.fg ts.currentStyle.bg ts.currentStyle.modifier
-  let ts := ts.withCurrentBuffer fun buf =>
-    buf.set ts.cursor.col ts.cursor.row cell
-  let ts := ts.markRowDirty ts.cursor.row
+  ts := ts.withCurrentBuffer fun buf => Id.run do
+    let mut b := buf.clearWideAt ts.cursor.col ts.cursor.row
+    if width == 2 then
+      if ts.cursor.col + 1 < buf.width then
+        b := b.clearWideAt (ts.cursor.col + 1) ts.cursor.row
+        b := b.set ts.cursor.col ts.cursor.row cell
+        b := b.set (ts.cursor.col + 1) ts.cursor.row (Cell.continuation cell)
+        return b
+      else
+        return b
+    return b.set ts.cursor.col ts.cursor.row cell
+  ts := ts.markRowDirty ts.cursor.row
 
   -- Advance cursor
   { ts with
-    cursor := ts.cursor.advance ts.width ts.height ts.modes.autoWrap
+    cursor := ts.cursor.advanceBy ts.width ts.height ts.modes.autoWrap width
     lastChar := some c
   }
 
@@ -311,6 +346,7 @@ def eraseChars (ts : TerminalState) (n : Nat) : TerminalState :=
     for i in [0:n] do
       let col := ts.cursor.col + i
       if col < ts.width then
+        b := b.clearWideAt col ts.cursor.row
         b := b.set col ts.cursor.row Cell.empty
     b
   ts.markRowDirty ts.cursor.row

@@ -202,8 +202,9 @@ def getSelectedText (state : AppState) : String :=
         -- Get characters for this row
         for col in [startCol : endCol] do
           let cell := buffer.get col row
-          if cell.char != '\x00' then
-            result := result.push cell.char
+          let text := cell.text
+          if !text.isEmpty then
+            result := result ++ text
         -- Add newline between rows (not after last)
         if row < sel.endRow then
           result := result.push '\n'
