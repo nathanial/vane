@@ -354,7 +354,7 @@ test "OSC 52 queries clipboard" := do
   | .queryClipboard clipboard => ensure (clipboard == "c") "should query clipboard"
   | _ => ensure false "expected queryClipboard"
 
-#generate_tests
+
 
 end VaneTests
 

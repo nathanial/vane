@@ -211,5 +211,3 @@ test "encodes escape as single ESC byte" := do
   let bytes := encodeForPty input
   ensure (bytes.size == 1) s!"Expected 1 byte, got {bytes.size}"
   ensure (bytes[0]! == 0x1B) "Expected ESC byte"
-
-#generate_tests
