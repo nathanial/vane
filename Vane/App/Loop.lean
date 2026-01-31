@@ -224,6 +224,10 @@ def run (config : Config) : IO Unit := do
     -- Poll window events
     c.pollEvents
 
+    -- Handle window resize
+    let (windowWidth, windowHeight) ← c.ctx.getCurrentSize
+    s ← s.handleResize windowWidth windowHeight
+
     -- Poll and process PTY output
     s ← pollAndProcessPty s
 
